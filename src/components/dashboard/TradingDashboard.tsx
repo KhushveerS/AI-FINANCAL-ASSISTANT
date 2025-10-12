@@ -52,125 +52,6 @@ export default function TradingDashboard() {
      Your browser does not support the video tag.
      </video>
 </div>
-
-    
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 bg-muted/50">
-            <TabsTrigger value="overview" className="flex items-center gap-2 hover:text-blue-500 transition">
-              <Activity className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="stocks" className="flex items-center gap-2 hover:text-violet-500 transition">
-              <BarChart3 className="h-4 w-4" />
-              Stocks
-            </TabsTrigger>
-            <TabsTrigger value="crypto" className="flex items-center gap-2 hover:text-cyan-500 transition">
-              <Coins className="h-4 w-4" />
-              Crypto
-            </TabsTrigger>
-            <TabsTrigger value="forex" className="flex items-center gap-2 hover:text-emerald-500 transition">
-              <Globe className="h-4 w-4" />
-              Forex
-            </TabsTrigger>
-            <TabsTrigger value="etf" className="flex items-center gap-2 hover:text-emerald-500 transition">
-              <PieChart className="h-4 w-4" />
-              ETF
-            </TabsTrigger>
-            <TabsTrigger value="charts" className="flex items-center gap-2 hover:text-green-500 transition">
-              <LineChart className="h-4 w-4" />
-              Advanced Charts
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="flex items-center gap-2 hover:text-blue-500 transition">
-              <TrendingUp className="h-4 w-4" />
-              AI Analysis
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6 ">
-            <MarketOverview />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 bg-gradient-surface border-border/50 shadow-card">
-                <CardHeader>
-                  <CardTitle>Market Heatmap - S&P 500</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[500px] p-0">
-                  <StockHeatmap />
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-surface border-border/50 shadow-card">
-                <CardHeader>
-                  <CardTitle>Market News</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[500px] p-0">
-                  <NewsFeed />
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="stocks" className="space-y-6">
-            <Card className="bg-gradient-surface border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle>Stock Market Heatmap</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[600px] p-0">
-                <StockHeatmap />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="crypto" className="space-y-6">
-            <Card className="bg-gradient-surface border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle>Cryptocurrency Heatmap</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[600px] p-0">
-                <CryptoHeatmap />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-
-          <TabsContent value="forex" className="space-y-6">
-            <Card className="bg-gradient-surface border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle>Forex Market Screener</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[600px] p-0">
-                <ForexScreener />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="etf" className="space-y-6">
-            <Card className="bg-gradient-surface border-border/50 shadow-card">
-              <CardHeader>
-                <CardTitle>ETF Heatmap</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[600px] p-0">
-                <ETFHeatmap />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="charts" className="space-y-6">
-            <Card className="bg-gradient-surface border-border/50 shadow-card ">
-              <CardHeader>
-                <CardTitle>Advanced Charting</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[600px] p-0">
-                <AdvancedChart />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="analysis" className="space-y-6">
-            <StockAnalyzer />
-          </TabsContent>
-        </Tabs>
-      </main>
       <video
      src="src/components/widgets/part3.mp4"
        autoPlay
@@ -189,6 +70,7 @@ export default function TradingDashboard() {
           <a href="#" className="hover:text-cyan-500 transition">Privacy Policy</a>
           <a href="#" className="hover:text-purple-500 transition">Terms of Service</a>
           <a href="#" className="hover:text-pink-500 transition">Contact</a>
+          <a href="#" className="hover:text-yellow-500 transition">Loved by world's best fintech</a>
         </div>
 
         {/* Right side (copyright + socials) */}
@@ -199,7 +81,7 @@ export default function TradingDashboard() {
 
           {/* Social Icons */}
           <div className="flex gap-4 mt-2 text-2xl font-bold text-white">
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition">
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-pink-500 transition">
               <Twitter className="h-5 w-5" />
             </a>
             <a href="https://www.linkedin.com/in/khushveer-singh-b6b888286/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-500 transition">

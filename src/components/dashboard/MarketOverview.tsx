@@ -17,13 +17,16 @@ const sectors = [
   { name: "Consumer", change: "-0.3%", trend: "down" },
   { name: "Industrials", change: "+1.2%", trend: "up" },
 ];
-
+ 
 export default function MarketOverview() {
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="w-full space-y-6">
+     
+      
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {marketData.map((market) => (
-          <Card key={market.name} className="bg-gradient-surface border-border/50 shadow-card hover:shadow-glow transition-all duration-300">
+          <Card key={market.name} className="w-full bg-gradient-surface border-border/50 shadow-card hover:shadow-glow transition-all duration-300">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -41,9 +44,9 @@ export default function MarketOverview() {
           </Card>
         ))}
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-gradient-surface border-border/50 shadow-card">
+     
+      <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="w-full bg-gradient-surface border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -64,8 +67,8 @@ export default function MarketOverview() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="bg-gradient-surface border-border/50 shadow-card">
+        
+        <Card className="w-full bg-gradient-surface border-border/50 shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-primary" />
@@ -73,16 +76,16 @@ export default function MarketOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
+            <div className="w-full space-y-4">
+              <div className="w-full p-4 bg-success/10 border border-success/20 rounded-lg">
                 <h4 className="font-semibold text-success mb-1">Strong Tech Rally</h4>
                 <p className="text-sm text-muted-foreground">Technology stocks leading the market with AI-driven gains</p>
               </div>
-              <div className="p-4 bg-warning/10 border border-warning/20 rounded-lg">
+              <div className="w-full p-4 bg-warning/10 border border-warning/20 rounded-lg">
                 <h4 className="font-semibold text-warning mb-1">Fed Watch</h4>
                 <p className="text-sm text-muted-foreground">Markets await Federal Reserve policy announcement</p>
               </div>
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="w-full p-4 bg-primary/10 border border-primary/20 rounded-lg">
                 <h4 className="font-semibold text-primary mb-1">Earnings Season</h4>
                 <p className="text-sm text-muted-foreground">Q4 earnings reports showing mixed results</p>
               </div>
@@ -91,5 +94,6 @@ export default function MarketOverview() {
         </Card>
       </div>
     </div>
+    
   );
 }
