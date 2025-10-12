@@ -405,7 +405,7 @@ export default function ForexPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {topGainers.map((currency, index) => (
-                      <div key={currency.pair} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100 bg-gray-900">
+                      <div key={currency.pair} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100  bg-gradient-to-r from-gray-800 to-gray-900">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-green-100 text-green-700">
                             #{index + 1}
@@ -489,7 +489,7 @@ export default function ForexPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {topLosers.map((currency, index) => (
-                      <div key={currency.pair} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100 bg-gray-900">
+                      <div key={currency.pair} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100  bg-gradient-to-r from-gray-800 to-gray-900">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-red-100 text-red-700">
                             #{index + 1}
