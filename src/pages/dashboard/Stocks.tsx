@@ -6,6 +6,7 @@ import StockHeatmap from "@/components/widgets/StockHeatmap";
 import Navbar from "@/components/dashboard/Navbar";
 import { useState, useEffect } from "react";
 import { Search, TrendingUp, AlertTriangle, DollarSign, BarChart3, Flame, Trophy, TrendingDown, Clock, Zap, ArrowUp, ArrowDown } from "lucide-react";
+import axios from 'axios';
 
 interface StockAnalysis {
   symbol: string;
@@ -54,6 +55,113 @@ interface AISuggestion {
   timestamp: string;
 }
 
+// Mock data generators
+const generateMockPerformers = (count: number, type: 'gainers' | 'losers'): TopPerformer[] => {
+  const mockStocks = [
+    { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology' },
+    { symbol: 'TSLA', name: 'Tesla Inc.', sector: 'Automotive' },
+    { symbol: 'MSFT', name: 'Microsoft Corp.', sector: 'Technology' },
+    { symbol: 'NVDA', name: 'NVIDIA Corp.', sector: 'Technology' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.', sector: 'E-Commerce' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.', sector: 'Technology' },
+    { symbol: 'META', name: 'Meta Platforms', sector: 'Technology' },
+    { symbol: 'NFLX', name: 'Netflix Inc.', sector: 'Entertainment' },
+    { symbol: 'AMD', name: 'Advanced Micro Devices', sector: 'Technology' },
+    { symbol: 'INTC', name: 'Intel Corp.', sector: 'Technology' }
+  ];
+
+  return mockStocks.slice(0, count).map((stock, index) => ({
+    ...stock,
+    price: type === 'gainers' ? 150 + (index * 10) : 100 - (index * 5),
+    change: type === 'gainers' ? 2 + (index * 0.5) : -2 - (index * 0.5),
+    changePercent: type === 'gainers' ? 1.5 + (index * 0.5) : -1.5 - (index * 0.5),
+    volume: ((1000000 + index * 100000) * (type === 'gainers' ? 1.5 : 0.8)).toLocaleString()
+  }));
+};
+
+// Mock data
+const mockAiSuggestions: AISuggestion[] = [
+  {
+    id: '1',
+    type: 'buy',
+    symbol: 'NVDA',
+    recommendation: "Strong buy recommendation based on AI chip demand surge",
+    confidence: 92,
+    timestamp: '2 hours ago'
+  },
+  {
+    id: '2',
+    type: 'sell',
+    symbol: 'TSLA',
+    recommendation: "Consider profit-taking amid increased competition in EV space",
+    confidence: 78,
+    timestamp: '4 hours ago'
+  },
+  {
+    id: '3',
+    type: 'buy',
+    symbol: 'MSFT',
+    recommendation: "Cloud services growth accelerating, strong fundamentals",
+    confidence: 88,
+    timestamp: '6 hours ago'
+  },
+  {
+    id: '4',
+    type: 'watch',
+    symbol: 'AAPL',
+    recommendation: "Monitor upcoming product launch for entry point",
+    confidence: 85,
+    timestamp: '8 hours ago'
+  }
+];
+
+const mockNews: NewsItem[] = [
+  {
+    id: '1',
+    title: 'Fed Holds Rates Steady, Signals Potential Cuts Later This Year',
+    source: 'Bloomberg',
+    timestamp: '2 hours ago',
+    sentiment: 'positive',
+    impact: 'high'
+  },
+  {
+    id: '2',
+    title: 'Tech Giants Report Strong Quarterly Earnings Amid AI Boom',
+    source: 'CNBC',
+    timestamp: '4 hours ago',
+    sentiment: 'positive',
+    impact: 'high'
+  },
+  {
+    id: '3',
+    title: 'Oil Prices Volatile Amid Middle East Tensions',
+    source: 'Reuters',
+    timestamp: '6 hours ago',
+    sentiment: 'negative',
+    impact: 'medium'
+  },
+  {
+    id: '4',
+    title: 'Retail Sales Data Exceeds Expectations',
+    source: 'Wall Street Journal',
+    timestamp: '8 hours ago',
+    sentiment: 'positive',
+    impact: 'medium'
+  },
+  {
+    id: '5',
+    title: 'AI Chip Demand Drives Semiconductor Stocks to Record Highs',
+    source: 'Financial Times',
+    timestamp: '1 hour ago',
+    sentiment: 'positive',
+    impact: 'high'
+  }
+];
+
+const popularSymbols = ['AAPL', 'TSLA', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'AMD', 'INTC'];
+const API_KEY = 'C7YW81T678JEUQ47'; // Replace with your actual API key
+const API_BASE = 'https://www.alphavantage.co/query';
+
 export default function StocksPage() {
   const [symbol, setSymbol] = useState('');
   const [analysis, setAnalysis] = useState<StockAnalysis | null>(null);
@@ -65,106 +173,83 @@ export default function StocksPage() {
   const [marketNews, setMarketNews] = useState<NewsItem[]>([]);
   const [activeTab, setActiveTab] = useState<'heatmap' | 'analysis'>('heatmap');
 
-  // Mock data for top performers
-  const generateMockPerformers = (count: number, type: 'gainers' | 'losers') => {
-    const sectors = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer', 'Industrial'];
-    return Array.from({ length: count }, (_, i) => ({
-      symbol: ['AAPL', 'TSLA', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'AMD', 'INTC'][i],
-      name: ['Apple', 'Tesla', 'Microsoft', 'NVIDIA', 'Amazon', 'Google', 'Meta', 'Netflix', 'AMD', 'Intel'][i] + ' Inc.',
-      price: Math.random() * 500 + 100,
-      change: type === 'gainers' ? Math.random() * 50 + 10 : -(Math.random() * 30 + 5),
-      changePercent: type === 'gainers' ? Math.random() * 15 + 5 : -(Math.random() * 12 + 3),
-      volume: `${(Math.random() * 20 + 5).toFixed(1)}M`,
-      sector: sectors[Math.floor(Math.random() * sectors.length)]
-    }));
-  };
-
-  // Mock AI suggestions
-  const mockAiSuggestions: AISuggestion[] = [
-    {
-      id: '1',
-      type: 'buy',
-      symbol: 'NVDA',
-      recommendation: "Strong buy recommendation based on AI chip demand surge",
-      confidence: 92,
-      timestamp: '2 hours ago'
-    },
-    {
-      id: '2',
-      type: 'sell',
-      symbol: 'TSLA',
-      recommendation: "Consider profit-taking amid increased competition in EV space",
-      confidence: 78,
-      timestamp: '4 hours ago'
-    },
-    {
-      id: '3',
-      type: 'buy',
-      symbol: 'MSFT',
-      recommendation: "Cloud services growth accelerating, strong fundamentals",
-      confidence: 88,
-      timestamp: '6 hours ago'
-    },
-    {
-      id: '4',
-      type: 'watch',
-      symbol: 'AAPL',
-      recommendation: "Monitor upcoming product launch for entry point",
-      confidence: 85,
-      timestamp: '8 hours ago'
-    }
-  ];
-
-  // Mock news data
-  const mockNews: NewsItem[] = [
-    {
-      id: '1',
-      title: 'Fed Holds Rates Steady, Signals Potential Cuts Later This Year',
-      source: 'Bloomberg',
-      timestamp: '2 hours ago',
-      sentiment: 'positive',
-      impact: 'high'
-    },
-    {
-      id: '2',
-      title: 'Tech Giants Report Strong Quarterly Earnings Amid AI Boom',
-      source: 'CNBC',
-      timestamp: '4 hours ago',
-      sentiment: 'positive',
-      impact: 'high'
-    },
-    {
-      id: '3',
-      title: 'Oil Prices Volatile Amid Middle East Tensions',
-      source: 'Reuters',
-      timestamp: '6 hours ago',
-      sentiment: 'negative',
-      impact: 'medium'
-    },
-    {
-      id: '4',
-      title: 'Retail Sales Data Exceeds Expectations',
-      source: 'Wall Street Journal',
-      timestamp: '8 hours ago',
-      sentiment: 'positive',
-      impact: 'medium'
-    },
-    {
-      id: '5',
-      title: 'AI Chip Demand Drives Semiconductor Stocks to Record Highs',
-      source: 'Financial Times',
-      timestamp: '1 hour ago',
-      sentiment: 'positive',
-      impact: 'high'
-    }
-  ];
-
   useEffect(() => {
-    // Initialize with mock data
-    setTopGainers(generateMockPerformers(10, 'gainers'));
-    setTopLosers(generateMockPerformers(10, 'losers'));
+    const fetchTopPerformers = async () => {
+      try {
+        // Check cache first to avoid API limits
+        const cached = localStorage.getItem('topPerformers');
+        const cacheTime = localStorage.getItem('topPerformersTime');
+        
+        if (cached && cacheTime && Date.now() - parseInt(cacheTime) < 300000) { // 5 minute cache
+          const data = JSON.parse(cached);
+          setTopGainers(data.gainers);
+          setTopLosers(data.losers);
+          return;
+        }
+
+        // Sequential requests to avoid rate limits
+        const performers = [];
+        for (const sym of popularSymbols) {
+          try {
+            const response = await axios.get(
+              `${API_BASE}?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${API_KEY}`
+            );
+            
+            const data = response.data['Global Quote'];
+            if (data && data['05. price']) {
+              const price = parseFloat(data['05. price']);
+              const change = parseFloat(data['09. change']);
+              const changePercent = parseFloat(data['10. change percent'].replace('%', ''));
+              
+              performers.push({
+                symbol: sym,
+                name: data['01. symbol'], // Using symbol as name fallback
+                price,
+                change,
+                changePercent,
+                volume: data['06. volume'],
+                sector: 'Technology', // Default sector
+              });
+            }
+            
+            // Add delay between requests to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 200));
+          } catch (err) {
+            console.warn(`Failed to fetch ${sym}:`, err);
+          }
+        }
+
+        if (performers.length > 0) {
+          const sorted = performers.sort((a, b) => b.changePercent - a.changePercent);
+          const gainers = sorted.slice(0, 5);
+          const losers = sorted.slice(-5).reverse();
+          
+          setTopGainers(gainers);
+          setTopLosers(losers);
+          
+          // Cache results
+          localStorage.setItem('topPerformers', JSON.stringify({ gainers, losers }));
+          localStorage.setItem('topPerformersTime', Date.now().toString());
+        } else {
+          // Fallback to mock data if API fails
+          setTopGainers(generateMockPerformers(5, 'gainers'));
+          setTopLosers(generateMockPerformers(5, 'losers'));
+        }
+      } catch (err) {
+        console.error('Failed to fetch performers:', err);
+        // Fallback to mock data
+        setTopGainers(generateMockPerformers(5, 'gainers'));
+        setTopLosers(generateMockPerformers(5, 'losers'));
+      }
+    };
+
+    fetchTopPerformers();
     setAiSuggestions(mockAiSuggestions);
     setMarketNews(mockNews);
+
+    // Refresh every 5 minutes (respects API limits)
+    const interval = setInterval(fetchTopPerformers, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const analyzeStock = async () => {
@@ -175,43 +260,74 @@ export default function StocksPage() {
     setActiveTab('analysis');
     
     try {
-      // Mock data since we don't have a real API
-      const mockData: StockAnalysis = {
+      const quoteParams = `function=GLOBAL_QUOTE&symbol=${symbol.toUpperCase()}&apikey=${API_KEY}`;
+      const overviewParams = `function=OVERVIEW&symbol=${symbol.toUpperCase()}&apikey=${API_KEY}`;
+      
+      const [quoteRes, overviewRes] = await Promise.all([
+        axios.get(`${API_BASE}?${quoteParams}`),
+        axios.get(`${API_BASE}?${overviewParams}`)
+      ]);
+      
+      // Check for API errors
+      if (quoteRes.data.Note || overviewRes.data.Note) {
+        throw new Error('API rate limit reached. Please try again in a minute.');
+      }
+      
+      if (quoteRes.data['Error Message']) {
+        throw new Error('Invalid stock symbol. Please check the symbol and try again.');
+      }
+      
+      const quoteData = quoteRes.data['Global Quote'];
+      const overviewData = overviewRes.data;
+      
+      if (!quoteData || Object.keys(quoteData).length === 0) {
+        throw new Error('No data found for this symbol. It may be delisted or the symbol may be incorrect.');
+      }
+      
+      const currentPrice = parseFloat(quoteData['05. price']);
+      const priceChange = parseFloat(quoteData['09. change']);
+      const priceChangePercent = parseFloat(quoteData['10. change percent'].replace('%', ''));
+      
+      // Enhanced analysis based on real data
+      let sentiment: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+      if (priceChangePercent > 2) sentiment = 'bullish';
+      else if (priceChangePercent < -2) sentiment = 'bearish';
+      
+      const realData: StockAnalysis = {
         symbol: symbol.toUpperCase(),
-        companyName: `${symbol.toUpperCase()} Corporation`,
-        currentPrice: Math.random() * 500 + 100,
-        priceChange: (Math.random() - 0.5) * 20,
-        priceChangePercent: (Math.random() - 0.5) * 10,
-        analysis: `Our AI analysis indicates that ${symbol.toUpperCase()} shows strong potential for growth based on technical indicators and market sentiment. The company's fundamentals remain solid with consistent revenue growth and a strong balance sheet.`,
-        sentiment: Math.random() > 0.6 ? 'bullish' : Math.random() > 0.3 ? 'neutral' : 'bearish',
+        companyName: overviewData?.Name || `${symbol.toUpperCase()} Corporation`,
+        currentPrice,
+        priceChange,
+        priceChangePercent,
+        analysis: overviewData?.Description 
+          ? `Company Overview: ${overviewData.Description.slice(0, 200)}...` 
+          : `Current trading at $${currentPrice.toFixed(2)} with ${priceChange >= 0 ? 'gains' : 'losses'} of ${Math.abs(priceChangePercent).toFixed(2)}%.`,
+        sentiment,
         keyMetrics: {
-          peRatio: Math.random() * 30 + 10,
-          marketCap: `$${(Math.random() * 200 + 50).toFixed(2)}B`,
-          dividendYield: Math.random() * 3,
-          fiftyTwoWeekHigh: Math.random() * 600 + 200,
-          fiftyTwoWeekLow: Math.random() * 200 + 50,
+          peRatio: parseFloat(overviewData?.PERatio || '0'),
+          marketCap: overviewData?.MarketCapitalization 
+            ? `$${(parseFloat(overviewData.MarketCapitalization) / 1000000000).toFixed(2)}B`
+            : 'N/A',
+          dividendYield: parseFloat(overviewData?.DividendYield || '0') * 100,
+          fiftyTwoWeekHigh: parseFloat(overviewData?.['52WeekHigh'] || currentPrice.toString()),
+          fiftyTwoWeekLow: parseFloat(overviewData?.['52WeekLow'] || currentPrice.toString()),
         },
         newsInsights: [
-          "Recent earnings beat analyst expectations by 12%",
-          "New product launch expected to drive revenue growth",
-          "Industry analysts upgraded rating to 'Buy'",
-          "Strong performance in international markets"
+          `Latest price: $${currentPrice.toFixed(2)} (${priceChange >= 0 ? '+' : ''}${priceChangePercent.toFixed(2)}%)`,
+          `52W Range: $${parseFloat(overviewData?.['52WeekLow'] || currentPrice.toString()).toFixed(2)} - $${parseFloat(overviewData?.['52WeekHigh'] || currentPrice.toString()).toFixed(2)}`,
+          `Sector: ${overviewData?.Sector || 'Not specified'}`
         ],
         recommendations: [
-          "Consider accumulating positions on dips",
-          "Set stop-loss at 8% below current price",
-          "Target price of $" + (Math.random() * 100 + 200).toFixed(2) + " within 12 months",
-          "Monitor upcoming quarterly earnings report"
-        ]
+          `P/E Ratio: ${parseFloat(overviewData?.PERatio || '0').toFixed(2)} ${parseFloat(overviewData?.PERatio || '0') > 25 ? '(Consider valuation)' : '(Reasonable valuation)'}`,
+          `Market Cap: ${overviewData?.MarketCapitalization ? `$${(parseFloat(overviewData.MarketCapitalization) / 1000000000).toFixed(2)}B` : 'N/A'}`,
+          `Dividend Yield: ${(parseFloat(overviewData?.DividendYield || '0') * 100).toFixed(2)}%`
+        ],
       };
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setAnalysis(mockData);
-    } catch (err) {
-      setError('Failed to fetch stock analysis. Please try again.');
-      console.error('Error analyzing stock:', err);
+      setAnalysis(realData);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch data. Please try again later.');
+      console.error('Analysis error:', err);
     } finally {
       setLoading(false);
     }
@@ -262,6 +378,10 @@ export default function StocksPage() {
           <p className="text-muted-foreground">
             Real-time stock market heatmaps, AI-powered analysis, and performance data
           </p>
+          <div className="mt-2 text-sm text-yellow-600 flex items-center gap-1">
+            <AlertTriangle className="w-4 h-4" />
+            Data delayed by 15 minutes for US stocks
+          </div>
         </div>
 
         {/* Search and Tabs Section */}
@@ -342,7 +462,7 @@ export default function StocksPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {topGainers.map((stock, index) => (
-                      <div key={stock.symbol} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100 bg-gradient-to-r from-gray-800 to-gray-900">
+                      <div key={stock.symbol} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-green-100 text-green-700">
                             #{index + 1}
@@ -376,12 +496,12 @@ export default function StocksPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {aiSuggestions.map((suggestion) => (
-                      <div key={suggestion.id} className="p-3 border rounded-lg bg-gray-900">
+                      <div key={suggestion.id} className="p-3 border rounded-lg bg-background/50">
                         <div className="flex justify-between items-start mb-2">
                           <Badge className={getSuggestionColor(suggestion.type)}>
                             {suggestion.type.toUpperCase()}
                           </Badge>
-                          <Badge variant="outline" className="bg-blue-50 text-black">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700">
                             {suggestion.confidence}% confidence
                           </Badge>
                         </div>
@@ -407,7 +527,7 @@ export default function StocksPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {topLosers.map((stock, index) => (
-                      <div key={stock.symbol} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100  bg-gradient-to-r from-gray-800 to-gray-900">
+                      <div key={stock.symbol} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-red-100 text-red-700">
                             #{index + 1}
@@ -450,9 +570,9 @@ export default function StocksPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {marketNews.map((news) => (
-                    <div key={news.id} className="p-4 border rounded-lg bg-gray-900">
+                    <div key={news.id} className="p-4 border rounded-lg bg-background/50">
                       <div className="flex justify-between items-start mb-2">
                         <Badge className={getNewsSentimentColor(news.sentiment)}>
                           {news.sentiment}
@@ -461,7 +581,7 @@ export default function StocksPage() {
                           {news.impact} impact
                         </Badge>
                       </div>
-                      <h4 className="font-semibold mb-2 text-white">{news.title}</h4>
+                      <h4 className="font-semibold mb-2">{news.title}</h4>
                       <div className="flex justify-between items-center text-sm text-muted-foreground">
                         <span>{news.source}</span>
                         <div className="flex items-center gap-1">
@@ -526,7 +646,7 @@ export default function StocksPage() {
                       </div>
                       <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                         <span>Dividend Yield</span>
-                        <Badge variant="secondary">{(analysis.keyMetrics.dividendYield * 100).toFixed(2)}%</Badge>
+                        <Badge variant="secondary">{analysis.keyMetrics.dividendYield.toFixed(2)}%</Badge>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
                         <span>52W Range</span>

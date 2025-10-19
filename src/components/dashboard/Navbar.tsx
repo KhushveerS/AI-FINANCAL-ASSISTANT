@@ -28,6 +28,8 @@ export default function Navbar() {
     { name: "Charts", path: "/dashboard/charts", icon: LineChart },
     { name: "AI Analysis", path: "/dashboard/analysis", icon: TrendingUp },
     { name: "News", path: "/dashboard/news", icon: Newspaper },
+    { name:"Bond",path:"/dashboard/bond",icon: Activity   },
+    { name: "Sentimental", path: "/dashboard/Sentimental", icon: LineChart }
   ];
 
   return (

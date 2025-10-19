@@ -22,8 +22,6 @@ export default function MarketOverview() {
 
   return (
     <div className="w-full space-y-6">
-     
-      
       <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {marketData.map((market) => (
           <Card key={market.name} className="w-full bg-gradient-surface border-border/50 shadow-card hover:shadow-glow transition-all duration-300">
