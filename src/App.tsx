@@ -16,6 +16,7 @@ import StockAnalysisPage from "./pages/dashboard/StockAnalysis";
 import NewsPage from "./pages/dashboard/News";
 import Bond from "./pages/dashboard/Bonds";
 import SentimentalAnaylsis from "./pages/dashboard/SentimentalAnaylsis";
+import InvestmentAssistant from "./pages/dashboard/InvestmentAssistant";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -37,6 +38,7 @@ const App = () => (
           <Route path="/dashboard/news" element={<NewsPage />} />
           <Route path="/dashboard/bond" element={<Bond />} />
           <Route path="/dashboard/Sentimental" element={<SentimentalAnaylsis />} />
+          <Route path="/dashboard/assistant" element={<InvestmentAssistant />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

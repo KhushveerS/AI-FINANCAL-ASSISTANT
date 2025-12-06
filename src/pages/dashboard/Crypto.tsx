@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import CryptoHeatmap from "@/components/widgets/CryptoHeatmap";
 import Navbar from "@/components/dashboard/Navbar";
 import { useState, useEffect } from "react";
-import { Search, TrendingUp, AlertTriangle, DollarSign, BarChart3, Flame, Trophy, TrendingDown, Clock, Zap, ArrowUp, ArrowDown, Bitcoin, Coins, Sparkles } from "lucide-react";
+import { Search, TrendingUp, AlertTriangle, DollarSign, BarChart3, Flame, Trophy, TrendingDown, Clock, Zap, ArrowUp, ArrowDown, Bitcoin, Coins, Sparkles, ExternalLink, Loader2 } from "lucide-react";
+import { fetchCryptoMarketData, fetchCryptoNews, type MarketPerformer, type NewsArticle } from "@/lib/marketDataService";
+import { useToast } from "@/hooks/use-toast";
 
 interface CryptoAnalysis {
   symbol: string;
@@ -44,6 +46,8 @@ interface NewsItem {
   timestamp: string;
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: 'high' | 'medium' | 'low';
+  url: string;
+  description?: string;
 }
 
 interface AISuggestion {
@@ -147,7 +151,8 @@ export default function CryptoPage() {
       source: 'CoinDesk',
       timestamp: '2 hours ago',
       sentiment: 'positive',
-      impact: 'high'
+      impact: 'high',
+      url: 'https://www.cnbc.com/tech/'
     },
     {
       id: '2',
@@ -155,7 +160,9 @@ export default function CryptoPage() {
       source: 'The Block',
       timestamp: '4 hours ago',
       sentiment: 'positive',
-      impact: 'high'
+      impact: 'high',
+      url: 'https://www.theblock.co',
+      description: 'Ethereum network upgrade successfully reduces transaction costs.'
     },
     {
       id: '3',
@@ -163,7 +170,9 @@ export default function CryptoPage() {
       source: 'Bloomberg Crypto',
       timestamp: '6 hours ago',
       sentiment: 'negative',
-      impact: 'medium'
+      impact: 'medium',
+      url: 'https://www.bloomberg.com/crypto',
+      description: 'Regulatory uncertainty continues to impact cryptocurrency markets.'
     },
     {
       id: '4',
@@ -171,7 +180,9 @@ export default function CryptoPage() {
       source: 'Decrypt',
       timestamp: '8 hours ago',
       sentiment: 'positive',
-      impact: 'medium'
+      impact: 'medium',
+      url: 'https://decrypt.co',
+      description: 'Major DeFi protocol achieves significant milestone.'
     },
     {
       id: '5',
@@ -179,7 +190,9 @@ export default function CryptoPage() {
       source: 'CryptoSlate',
       timestamp: '1 hour ago',
       sentiment: 'positive',
-      impact: 'medium'
+      impact: 'medium',
+      url: 'https://cryptoslate.com',
+      description: 'Payment processor expands cryptocurrency support.'
     }
   ];
 
@@ -191,13 +204,122 @@ export default function CryptoPage() {
     { symbol: 'XRP', name: 'Ripple', price: 0.6234, change: 0.0234, changePercent: 3.90, volume: '1.8B', marketCap: '33.7B', category: 'Payments' }
   ];
 
+  const [loadingMarketData, setLoadingMarketData] = useState(true);
+  const { toast } = useToast();
+
   useEffect(() => {
-    // Initialize with mock data
-    setTopGainers(generateMockCryptoPerformers(10, 'gainers'));
-    setTopLosers(generateMockCryptoPerformers(10, 'losers'));
-    setAiSuggestions(mockCryptoAiSuggestions);
-    setMarketNews(mockCryptoNews);
-    setTrendingCoins(mockTrendingCoins);
+    const loadCryptoData = async () => {
+      try {
+        setLoadingMarketData(true);
+        
+        // Check cache first
+        const cached = localStorage.getItem('cryptoMarketData');
+        const cacheTime = localStorage.getItem('cryptoMarketDataTime');
+        
+        if (cached && cacheTime && Date.now() - parseInt(cacheTime) < 300000) { // 5 minute cache
+          const data = JSON.parse(cached);
+          setTopGainers(data.gainers);
+          setTopLosers(data.losers);
+          setTrendingCoins(data.trending);
+          setMarketNews(data.news);
+          setLoadingMarketData(false);
+          return;
+        }
+
+        toast({
+          title: "Loading Crypto Data",
+          description: "Fetching real-time cryptocurrency data and news...",
+        });
+
+        // Fetch real crypto market data
+        const [marketData, newsData] = await Promise.all([
+          fetchCryptoMarketData(),
+          fetchCryptoNews()
+        ]);
+
+        // Convert MarketPerformer to TopPerformer
+        const gainers: TopPerformer[] = marketData.gainers.map(p => ({
+          symbol: p.symbol,
+          name: p.name,
+          price: p.price,
+          change: p.change,
+          changePercent: p.changePercent,
+          volume: p.volume,
+          marketCap: p.marketCap || 'N/A',
+          category: p.category || 'Cryptocurrency',
+        }));
+
+        const losers: TopPerformer[] = marketData.losers.map(p => ({
+          symbol: p.symbol,
+          name: p.name,
+          price: p.price,
+          change: p.change,
+          changePercent: p.changePercent,
+          volume: p.volume,
+          marketCap: p.marketCap || 'N/A',
+          category: p.category || 'Cryptocurrency',
+        }));
+
+        const trending: TopPerformer[] = marketData.trending.map(p => ({
+          symbol: p.symbol,
+          name: p.name,
+          price: p.price,
+          change: p.change,
+          changePercent: p.changePercent,
+          volume: p.volume,
+          marketCap: p.marketCap || 'N/A',
+          category: p.category || 'Cryptocurrency',
+        }));
+
+        // Convert NewsArticle to NewsItem
+        const news: NewsItem[] = newsData.map(n => ({
+          id: n.id,
+          title: n.title,
+          source: n.source,
+          timestamp: n.timestamp,
+          sentiment: n.sentiment,
+          impact: n.impact,
+          url: n.url,
+          description: n.description,
+        }));
+
+        setTopGainers(gainers);
+        setTopLosers(losers);
+        setTrendingCoins(trending);
+        setMarketNews(news);
+        setAiSuggestions(mockCryptoAiSuggestions);
+
+        // Cache results
+        localStorage.setItem('cryptoMarketData', JSON.stringify({ gainers, losers, trending, news }));
+        localStorage.setItem('cryptoMarketDataTime', Date.now().toString());
+
+        toast({
+          title: "Data Loaded",
+          description: `Loaded ${gainers.length} gainers, ${losers.length} losers, and ${news.length} news articles.`,
+        });
+      } catch (err: any) {
+        console.error('Failed to fetch crypto data:', err);
+        toast({
+          title: "Using Cached Data",
+          description: "Failed to fetch new data. Using cached or fallback data.",
+          variant: "destructive",
+        });
+        
+        // Fallback to mock data
+        setTopGainers(generateMockCryptoPerformers(10, 'gainers'));
+        setTopLosers(generateMockCryptoPerformers(10, 'losers'));
+        setTrendingCoins(mockTrendingCoins);
+        setMarketNews(mockCryptoNews);
+      } finally {
+        setLoadingMarketData(false);
+      }
+    };
+
+    loadCryptoData();
+
+    // Refresh every 5 minutes
+    const interval = setInterval(loadCryptoData, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const analyzeCrypto = async () => {
@@ -383,9 +505,19 @@ export default function CryptoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {topGainers.map((crypto, index) => (
-                      <div key={crypto.symbol} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100  bg-gradient-to-r from-gray-800 to-gray-900">
+                  {loadingMarketData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : topGainers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No data available
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {topGainers.map((crypto, index) => (
+                        <div key={crypto.symbol} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100  bg-gradient-to-r from-gray-800 to-gray-900">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-green-100 text-green-700">
                             #{index + 1}
@@ -403,8 +535,9 @@ export default function CryptoPage() {
                           <div className="text-sm">{formatPrice(crypto.price)}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -466,9 +599,19 @@ export default function CryptoPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {topLosers.map((crypto, index) => (
-                      <div key={crypto.symbol} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100  bg-gradient-to-r from-gray-800 to-gray-900">
+                  {loadingMarketData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : topLosers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No data available
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {topLosers.map((crypto, index) => (
+                        <div key={crypto.symbol} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100  bg-gradient-to-r from-gray-800 to-gray-900">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-red-100 text-red-700">
                             #{index + 1}
@@ -486,8 +629,9 @@ export default function CryptoPage() {
                           <div className="text-sm">{formatPrice(crypto.price)}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -511,28 +655,49 @@ export default function CryptoPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4  ">
-                  {marketNews.map((news) => (
-                    <div key={news.id} className="p-4 border rounded-lg bg-gray-900">
-                      <div className="flex justify-between items-start mb-2">
-                        <Badge className={getNewsSentimentColor(news.sentiment)}>
-                          {news.sentiment}
-                        </Badge>
-                        <Badge variant="outline" className={getImpactBadge(news.impact)}>
-                          {news.impact} impact
-                        </Badge>
-                      </div>
-                      <h4 className="font-semibold mb-2 text-white">{news.title}</h4>
-                      <div className="flex justify-between items-center text-sm text-muted-foreground">
-                        <span>{news.source}</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{news.timestamp}</span>
+                {loadingMarketData ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading news...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {marketNews.map((news) => (
+                      <a
+                        key={news.id}
+                        href={news.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 border rounded-lg bg-gray-900 hover:bg-gray-800 hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <Badge className={getNewsSentimentColor(news.sentiment)}>
+                            {news.sentiment}
+                          </Badge>
+                          <Badge variant="outline" className={getImpactBadge(news.impact)}>
+                            {news.impact} impact
+                          </Badge>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        <h4 className="font-semibold mb-2 text-white hover:text-cyan-400 transition-colors flex items-start gap-2">
+                          {news.title}
+                          <ExternalLink className="w-4 h-4 mt-0.5 flex-shrink-0 text-gray-400" />
+                        </h4>
+                        {news.description && (
+                          <p className="text-sm text-gray-400 mb-2 line-clamp-2">
+                            {news.description}
+                          </p>
+                        )}
+                        <div className="flex justify-between items-center text-sm text-muted-foreground">
+                          <span>{news.source}</span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{news.timestamp}</span>
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>

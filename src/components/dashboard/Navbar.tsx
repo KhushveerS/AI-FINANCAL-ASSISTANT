@@ -8,7 +8,8 @@ import {
   PieChart, 
   LineChart,
   Home,
-  Newspaper
+  Newspaper,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -27,6 +28,7 @@ export default function Navbar() {
     { name: "ETF", path: "/dashboard/etf", icon: PieChart },
     { name: "Charts", path: "/dashboard/charts", icon: LineChart },
     { name: "AI Analysis", path: "/dashboard/analysis", icon: TrendingUp },
+    { name: "Assistant", path: "/dashboard/assistant", icon: Bot },
     { name: "News", path: "/dashboard/news", icon: Newspaper },
     { name:"Bond",path:"/dashboard/bond",icon: Activity   },
     { name: "Sentimental", path: "/dashboard/Sentimental", icon: LineChart }

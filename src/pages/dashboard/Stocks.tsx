@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import StockHeatmap from "@/components/widgets/StockHeatmap";
 import Navbar from "@/components/dashboard/Navbar";
 import { useState, useEffect } from "react";
-import { Search, TrendingUp, AlertTriangle, DollarSign, BarChart3, Flame, Trophy, TrendingDown, Clock, Zap, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, TrendingUp, AlertTriangle, DollarSign, BarChart3, Flame, Trophy, TrendingDown, Clock, Zap, ArrowUp, ArrowDown, ExternalLink, Loader2 } from "lucide-react";
 import axios from 'axios';
+import { fetchStockMarketData, fetchMarketNews, type MarketPerformer, type NewsArticle } from "@/lib/marketDataService";
+import { useToast } from "@/hooks/use-toast";
 
 interface StockAnalysis {
   symbol: string;
@@ -44,6 +46,8 @@ interface NewsItem {
   timestamp: string;
   sentiment: 'positive' | 'negative' | 'neutral';
   impact: 'high' | 'medium' | 'low';
+  url: string;
+  description?: string;
 }
 
 interface AISuggestion {
@@ -122,7 +126,8 @@ const mockNews: NewsItem[] = [
     source: 'Bloomberg',
     timestamp: '2 hours ago',
     sentiment: 'positive',
-    impact: 'high'
+    impact: 'high',
+     url: 'https://www.cnbc.com/tech/'
   },
   {
     id: '2',
@@ -130,7 +135,8 @@ const mockNews: NewsItem[] = [
     source: 'CNBC',
     timestamp: '4 hours ago',
     sentiment: 'positive',
-    impact: 'high'
+    impact: 'high',
+    url: 'https://www.cnbc.com/tech/'
   },
   {
     id: '3',
@@ -138,7 +144,8 @@ const mockNews: NewsItem[] = [
     source: 'Reuters',
     timestamp: '6 hours ago',
     sentiment: 'negative',
-    impact: 'medium'
+    impact: 'medium',
+     url: 'https://www.cnbc.com/tech/'
   },
   {
     id: '4',
@@ -146,7 +153,8 @@ const mockNews: NewsItem[] = [
     source: 'Wall Street Journal',
     timestamp: '8 hours ago',
     sentiment: 'positive',
-    impact: 'medium'
+    impact: 'medium',
+     url: 'https://www.cnbc.com/tech/'
   },
   {
     id: '5',
@@ -154,12 +162,13 @@ const mockNews: NewsItem[] = [
     source: 'Financial Times',
     timestamp: '1 hour ago',
     sentiment: 'positive',
-    impact: 'high'
+    impact: 'high',
+     url: 'https://www.cnbc.com/tech/'
   }
 ];
 
 const popularSymbols = ['AAPL', 'TSLA', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'NFLX', 'AMD', 'INTC'];
-const API_KEY = 'C7YW81T678JEUQ47'; // Replace with your actual API key
+const API_KEY = 'IBR0WEO3G57LHIV8'; // Replace with your actual API key
 const API_BASE = 'https://www.alphavantage.co/query';
 
 export default function StocksPage() {
@@ -172,83 +181,105 @@ export default function StocksPage() {
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [marketNews, setMarketNews] = useState<NewsItem[]>([]);
   const [activeTab, setActiveTab] = useState<'heatmap' | 'analysis'>('heatmap');
+  const [loadingMarketData, setLoadingMarketData] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchTopPerformers = async () => {
+    const loadMarketData = async () => {
       try {
-        // Check cache first to avoid API limits
-        const cached = localStorage.getItem('topPerformers');
-        const cacheTime = localStorage.getItem('topPerformersTime');
+        setLoadingMarketData(true);
+        
+        // Check cache first
+        const cached = localStorage.getItem('stockMarketData');
+        const cacheTime = localStorage.getItem('stockMarketDataTime');
         
         if (cached && cacheTime && Date.now() - parseInt(cacheTime) < 300000) { // 5 minute cache
           const data = JSON.parse(cached);
           setTopGainers(data.gainers);
           setTopLosers(data.losers);
+          setMarketNews(data.news);
+          setLoadingMarketData(false);
           return;
         }
 
-        // Sequential requests to avoid rate limits
-        const performers = [];
-        for (const sym of popularSymbols) {
-          try {
-            const response = await axios.get(
-              `${API_BASE}?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${API_KEY}`
-            );
-            
-            const data = response.data['Global Quote'];
-            if (data && data['05. price']) {
-              const price = parseFloat(data['05. price']);
-              const change = parseFloat(data['09. change']);
-              const changePercent = parseFloat(data['10. change percent'].replace('%', ''));
-              
-              performers.push({
-                symbol: sym,
-                name: data['01. symbol'], // Using symbol as name fallback
-                price,
-                change,
-                changePercent,
-                volume: data['06. volume'],
-                sector: 'Technology', // Default sector
-              });
-            }
-            
-            // Add delay between requests to avoid rate limits
-            await new Promise(resolve => setTimeout(resolve, 200));
-          } catch (err) {
-            console.warn(`Failed to fetch ${sym}:`, err);
-          }
-        }
+        toast({
+          title: "Loading Market Data",
+          description: "Fetching real-time stock data and news...",
+        });
 
-        if (performers.length > 0) {
-          const sorted = performers.sort((a, b) => b.changePercent - a.changePercent);
-          const gainers = sorted.slice(0, 5);
-          const losers = sorted.slice(-5).reverse();
-          
-          setTopGainers(gainers);
-          setTopLosers(losers);
-          
-          // Cache results
-          localStorage.setItem('topPerformers', JSON.stringify({ gainers, losers }));
-          localStorage.setItem('topPerformersTime', Date.now().toString());
-        } else {
-          // Fallback to mock data if API fails
-          setTopGainers(generateMockPerformers(5, 'gainers'));
-          setTopLosers(generateMockPerformers(5, 'losers'));
-        }
-      } catch (err) {
-        console.error('Failed to fetch performers:', err);
+        // Fetch real market data
+        const [marketData, newsData] = await Promise.all([
+          fetchStockMarketData(),
+          fetchMarketNews('stock market')
+        ]);
+
+        // Convert MarketPerformer to TopPerformer
+        const gainers: TopPerformer[] = marketData.gainers.map(p => ({
+          symbol: p.symbol,
+          name: p.name,
+          price: p.price,
+          change: p.change,
+          changePercent: p.changePercent,
+          volume: p.volume,
+          sector: p.sector || 'Unknown',
+        }));
+
+        const losers: TopPerformer[] = marketData.losers.map(p => ({
+          symbol: p.symbol,
+          name: p.name,
+          price: p.price,
+          change: p.change,
+          changePercent: p.changePercent,
+          volume: p.volume,
+          sector: p.sector || 'Unknown',
+        }));
+
+        // Convert NewsArticle to NewsItem
+        const news: NewsItem[] = newsData.map(n => ({
+          id: n.id,
+          title: n.title,
+          source: n.source,
+          timestamp: n.timestamp,
+          sentiment: n.sentiment,
+          impact: n.impact,
+          url: n.url,
+          description: n.description,
+        }));
+
+        setTopGainers(gainers);
+        setTopLosers(losers);
+        setMarketNews(news);
+        setAiSuggestions(mockAiSuggestions); // Keep AI suggestions as is for now
+
+        // Cache results
+        localStorage.setItem('stockMarketData', JSON.stringify({ gainers, losers, news }));
+        localStorage.setItem('stockMarketDataTime', Date.now().toString());
+
+        toast({
+          title: "Data Loaded",
+          description: `Loaded ${gainers.length} gainers, ${losers.length} losers, and ${news.length} news articles.`,
+        });
+      } catch (err: any) {
+        console.error('Failed to fetch market data:', err);
+        toast({
+          title: "Using Cached Data",
+          description: "Failed to fetch new data. Using cached or fallback data.",
+          variant: "destructive",
+        });
+        
         // Fallback to mock data
         setTopGainers(generateMockPerformers(5, 'gainers'));
         setTopLosers(generateMockPerformers(5, 'losers'));
+        setMarketNews(mockNews);
+      } finally {
+        setLoadingMarketData(false);
       }
     };
 
-    fetchTopPerformers();
-    setAiSuggestions(mockAiSuggestions);
-    setMarketNews(mockNews);
+    loadMarketData();
 
-    // Refresh every 5 minutes (respects API limits)
-    const interval = setInterval(fetchTopPerformers, 300000);
+    // Refresh every 5 minutes
+    const interval = setInterval(loadMarketData, 300000);
     return () => clearInterval(interval);
   }, []);
 
@@ -460,8 +491,18 @@ export default function StocksPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {topGainers.map((stock, index) => (
+                  {loadingMarketData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : topGainers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No data available
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {topGainers.map((stock, index) => (
                       <div key={stock.symbol} className="flex justify-between items-center p-3 bg-green-50 rounded-lg border border-green-100">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-green-100 text-green-700">
@@ -482,6 +523,7 @@ export default function StocksPage() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -525,8 +567,18 @@ export default function StocksPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {topLosers.map((stock, index) => (
+                  {loadingMarketData ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                    </div>
+                  ) : topLosers.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground text-sm">
+                      No data available
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {topLosers.map((stock, index) => (
                       <div key={stock.symbol} className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
                         <div className="flex items-center gap-3">
                           <Badge variant="secondary" className="bg-red-100 text-red-700">
@@ -545,8 +597,9 @@ export default function StocksPage() {
                           <div className="text-sm">${stock.price.toFixed(2)}</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -570,28 +623,49 @@ export default function StocksPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {marketNews.map((news) => (
-                    <div key={news.id} className="p-4 border rounded-lg bg-background/50">
-                      <div className="flex justify-between items-start mb-2">
-                        <Badge className={getNewsSentimentColor(news.sentiment)}>
-                          {news.sentiment}
-                        </Badge>
-                        <Badge variant="outline" className={getImpactBadge(news.impact)}>
-                          {news.impact} impact
-                        </Badge>
-                      </div>
-                      <h4 className="font-semibold mb-2">{news.title}</h4>
-                      <div className="flex justify-between items-center text-sm text-muted-foreground">
-                        <span>{news.source}</span>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{news.timestamp}</span>
+                {loadingMarketData ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading news...</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {marketNews.map((news) => (
+                      <a
+                        key={news.id}
+                        href={news.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block p-4 border rounded-lg bg-background/50 hover:bg-background hover:shadow-md transition-all cursor-pointer"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <Badge className={getNewsSentimentColor(news.sentiment)}>
+                            {news.sentiment}
+                          </Badge>
+                          <Badge variant="outline" className={getImpactBadge(news.impact)}>
+                            {news.impact} impact
+                          </Badge>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        <h4 className="font-semibold mb-2 hover:text-primary transition-colors flex items-start gap-2">
+                          {news.title}
+                          <ExternalLink className="w-4 h-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                        </h4>
+                        {news.description && (
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {news.description}
+                          </p>
+                        )}
+                        <div className="flex justify-between items-center text-sm text-muted-foreground">
+                          <span>{news.source}</span>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>{news.timestamp}</span>
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
